@@ -69,7 +69,7 @@ class AntGraph extends UndirectedGraph {
 			pheromones(node) = value
 			
 		//override def toString = "%s -> (vis: %f) -> (pher: %s)" format (name, visibility, pheromones.keys map (_.toShortString) zip pheromones.values)
-			override def toString = "%s -> (vis: %f) -> (pher: %s)" format (name, visibility, pheromones values)
+		override def toString = "%s\tvis: %.1f\tpher: %s" format (name, visibility, pheromones.map(_ match { case (node, ph) => "%s = %.2f" format (node.toShortString, ph) }).mkString(", "))
 		def toShortString = "%s" format (name)
 	}
 	
@@ -85,8 +85,17 @@ class AntGraph extends UndirectedGraph {
 	override def toString : String = nodes.mkString("\n") // nodes.mkString("[\n\t", "\n\t", "\n]")
 }
 
-class ConcreteUndirectedGraph extends UndirectedGraph {
-  type Node = NodeImpl
+/*
+class MinMaxAntGraph(var min: Double, var max: Double) extends AntGraph {
+  override type Node = AntNode with MinMax
   
-  protected def newNode: Node = new NodeImpl
+  trait MinMax extends AntNode(heuristic, name, visibility) {
+    override def pheromone(node: Node) : Double = {
+      pheromones.getOrElseUpdate(node, max)
+    }
+    
+    override def changePheromone(node: Node, value: Double) : Unit = 
+      pheromones(node) = if (value > max) max else if (value < min) min else value
+  }
 }
+*/
