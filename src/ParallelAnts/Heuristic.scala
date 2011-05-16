@@ -73,37 +73,23 @@ trait SmartTTPHeuristic extends TTPHeuristic {
     val range = hypermove(solution)
     
     var bestSolution = solution
-    
-    /*
-    if (problem == null) {
-      D.infox("NULL")
-    }
-    else {
-      D.infox("NOT NULL")
-    }
-    */
     var bestCost = problem cost solution
-    
-    for (r1 <- range.r1) {
-      for (r2 <- range.r2) {
-      //for (r2 <- range.r2; if r2 != r1) {
-        for (t1 <- range.t1) {
-          for (t2 <- range.t2) {
-          //for (t2 <- range.t2; if t2 != t1) {
-            //D.infox()
-            
-            // TODO: maybe try to close bestSolution and see how that fares, maybe good performance!
-            //val copy = Utility.deepClone(solution)
-            val copy = Utility.deepClone(bestSolution)
-            act(copy, Move(r1, r2, t1, t2))
-            
-            val copyCost = problem cost copy
-            if (copyCost < bestCost) {
-              bestSolution = copy
-              bestCost = copyCost
-            }
-          }
-        }
+
+    for (
+      r1 <- range.r1;
+      r2 <- range.r2;
+      t1 <- range.t1;
+      t2 <- range.t2
+    ) {
+      // TODO: maybe try to close bestSolution and see how that fares, maybe good performance!
+      //val copy = Utility.deepClone(solution)
+      val copy = Utility.deepClone(bestSolution)
+      act(copy, Move(r1, r2, t1, t2))
+
+      val copyCost = problem cost copy
+      if (copyCost < bestCost) {
+        bestSolution = copy
+        bestCost = copyCost
       }
     }
     
