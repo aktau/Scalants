@@ -1,28 +1,58 @@
 package ParallelAnts
 
+abstract class DebugLevel
+case object Warning extends DebugLevel
+case object Error extends DebugLevel
+abstract class Info extends DebugLevel
+case object InnerLoopInfo extends Info
+case object OuterLoopInfo extends Info
+case object ImportantInfo extends Info
+
+object Debug {
+  def info(level: DebugLevel, text: String, xs: Any*) = Console.print(text.format(xs: _*))
+  //def info(text: String, xs: Any*) : Unit = Console.print(text.format(xs: _*))
+  //def infoln(x: Any) : Unit = Console.println(x)
+  def infox(text: String, xs: Any*) : Unit = Console.print(text.format(xs: _*))
+  def infox(x: Any) : Unit = Console.println(x)
+  def info(text: String, xs: Any*) = ()
+  def info(x: Any) = ()
+}
+
 object Main {
   def main(args : Array[String]) : Unit = {
   	val startTime = System.currentTimeMillis();
 
-    val numAnts = 3
+    val numAnts = 6
     val n = 6
     
-    // create Graph of heuristics
-    val graph = new AntGraph
+    val (dist, optimalCost) = TTPProblem.getClassicProblem(n)
+    val problem = new TTPProblem(dist, optimalCost / 50)
+    problem.optimalCost = optimalCost
     
-    val swaphomes = graph.addNode(SwapHomes, "Swap homes")
-    val swaprounds = graph.addNode(SwapRounds, "Swap rounds")
-    val swapteams = graph.addNode(SwapTeams, "Swap teams")
+    // create Graph of heuristics
+    //val graph = new NormalAntGraph
+    val graph = new MinMaxAntGraph(1.0, 5.0)
+    
+    val p = problem
+    object SmartSwapHomes extends { val problem: TTPProblem = p } with SwapHomes with TTPHeuristic2DTeams with SmartTTPHeuristic
+    object SmartSwapRounds extends { val problem: TTPProblem = p } with SwapRounds with TTPHeuristic2DRounds with SmartTTPHeuristic
+    object SmartSwapTeams extends { val problem: TTPProblem = p } with SwapTeams with TTPHeuristic2DTeams with SmartTTPHeuristic
+    object SmartShiftRounds extends { val problem: TTPProblem = p } with ShiftRounds with TTPHeuristic2DRounds with SmartTTPHeuristic
+    
+    val swaphomes = graph.addNode(new SwapHomes, "Swap homes")
+    val swaprounds = graph.addNode(new SwapRounds, "Swap rounds")
+    val swapteams = graph.addNode(new SwapTeams, "Swap teams")
+    val partialswaprounds = graph.addNode(new PartialSwapRounds, "Partial swap rounds")
+    val shiftrounds = graph.addNode(new ShiftRounds, "Shift rounds")
+    val smartswaphomes = graph.addNode(SmartSwapHomes, "Smart Swap homes")
+    val smartswaprounds = graph.addNode(SmartSwapRounds, "Smart Swap rounds")
+    val smartswapteams = graph.addNode(SmartSwapTeams, "Smart Swap teams")
+    val smartshiftrounds = graph.addNode(SmartShiftRounds, "Smart Shift rounds")
     
     graph.connectAll
     
     //val dist = TTPProblem.generateRandomDistanceMatrix(n, 4.0)
     //val dist =  Array(Array[Double](0, 745, 665, 929), Array[Double](745, 0, 80, 337), Array[Double](665, 80, 0, 380), Array[Double](929, 337, 380, 0))
-    
-    val (dist, optimalCost) = TTPProblem.getClassicProblem(n)
-    val problem = new TTPProblem(dist, optimalCost / 100)
-    problem.optimalCost = optimalCost
-    
     
     val sol = time(
   		problem.randomSolution,
@@ -30,14 +60,22 @@ object Main {
   			printf("Spent %d ms generating a matrix with %d backtracks\n", t, problem.backtracks)
   			s
   		}
-		)
+	)
 		
-		val controller = new AntController(numAnts, problem, graph, 0.9, 0.8, 1.0, 1000) with LenientVisibility
-    controller.start
+	//val controller = new AntController(numAnts, problem, graph, 0.9, 0.8, 1.0, 10000) with LenientVisibility
+	val controller = new AntController(numAnts, problem, graph, 0.9, 0.8, 1000) with MinMaxVisibility { 
+      val lowerVisibilityBound = 1.0
+      val upperVisibilityBound = 5.0
+    }
+    
+    val run = time(
+      controller.start,
+      (_: Any, t: Long) => printf("Spent %d ms solving the problem\n", t)
+    )
   }
   
   def time[T, R](f: => T, res:(T, Long) => R) : R = {
-		val startTime = System.currentTimeMillis
-		res(f, System.currentTimeMillis - startTime)
+    val startTime = System.currentTimeMillis
+    res(f, System.currentTimeMillis - startTime)
   }
 }

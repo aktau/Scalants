@@ -5,10 +5,14 @@ import Utility._
 
 abstract class Heuristic[S] {
 	def act(solution: S) : S
+	
+	val cost: Double
 }
 
 abstract class TTPHeuristic extends Heuristic[MatrixInt] {
 	val random = new Random
+	
+	def act(solution: MatrixInt, move: Move) : MatrixInt
 	
 	@inline final def getRands(max: Int) : (Int, Int) = {
 		val r1 = random.nextInt(max) 
@@ -20,75 +24,278 @@ abstract class TTPHeuristic extends Heuristic[MatrixInt] {
 		
 		(r1,r2)
 	}
+
+  lazy val cost: Double = {
+    val (dist, optimalCost) = TTPProblem.getClassicProblem(6)
+    val problem = new TTPProblem(dist, optimalCost / 100)
+    val testMatrix = problem.randomSolution
+
+    val iterations = 1000
+
+    val start = System.currentTimeMillis
+    for (i <- 1 to iterations) {
+      act(testMatrix)
+    }
+    val end = System.currentTimeMillis
+
+    printf("cost of %s over %d iterations = %.3f sec\n", toString, iterations, (end - start).toDouble / 1000)
+
+    (end - start).toDouble / 1000
+  }
 }
 
-object SwapRounds extends TTPHeuristic {
-	override def act(solution: MatrixInt) : MatrixInt = {
-		val (r1,r2) = getRands(solution.length)
-		
-		val temp = solution(r1)
-		solution(r1) = solution(r2)
-		solution(r2) = temp
-		
-		solution
-	}
-	
-	override def toString = "Swap Rounds"
+case class Move(r1: Int = 0, r2: Int = 0, t1: Int = 0, t2: Int = 0)
+case class HyperMove(
+    r1: Range = 0 to 0, 
+    r2: Range = 0 to 0, 
+    t1: Range = 0 to 0, 
+    t2: Range = 0 to 0
+)
+
+trait TTPHeuristicDimensioned extends TTPHeuristic {
+  def hypermove(solution: MatrixInt) : HyperMove
+}
+trait TTPHeuristic2DRounds extends TTPHeuristicDimensioned {
+  override final def hypermove(solution: MatrixInt) = HyperMove(r1 = 0 until solution.length, r2 = 0 until solution.length)
+}
+trait TTPHeuristic2DTeams extends TTPHeuristicDimensioned {
+  override final def hypermove(solution: MatrixInt) = HyperMove(t1 = 0 until solution(0).length, t2 = 0 until solution(0).length)
+}
+trait TTPHeuristic2DRounds1DTeam extends TTPHeuristicDimensioned {
+  override final def hypermove(solution: MatrixInt) = HyperMove(r1 = 0 until solution.length, r2 = 0 until solution.length, t1 = 0 until solution(0).length)
 }
 
-object SwapHomes extends TTPHeuristic {
-	override def act(solution: MatrixInt) : MatrixInt = {
-		val rounds = solution.length
-		val teams = solution(0).length
-		
-		val (t1,t2) = getRands(teams)
-		
-		for (c <- 0 until rounds) {
-			if (math.abs(solution(c)(t1)) - 1 == t2) {
-				solution(c)(t1) = -solution(c)(t1)
-				solution(c)(t2) = -solution(c)(t2)
-			}
-		}
-		
-		solution
-	}
-	
-	override def toString = "Swap Homes"
+trait SmartTTPHeuristic extends TTPHeuristic {
+  self: TTPHeuristicDimensioned =>
+  val problem: TTPProblem
+  
+  override def act(solution: MatrixInt): MatrixInt = {
+    val range = hypermove(solution)
+    
+    var bestSolution = solution
+    
+    /*
+    if (problem == null) {
+      D.infox("NULL")
+    }
+    else {
+      D.infox("NOT NULL")
+    }
+    */
+    var bestCost = problem cost solution
+    
+    for (r1 <- range.r1) {
+      for (r2 <- range.r2) {
+      //for (r2 <- range.r2; if r2 != r1) {
+        for (t1 <- range.t1) {
+          for (t2 <- range.t2) {
+          //for (t2 <- range.t2; if t2 != t1) {
+            //D.infox()
+            
+            // TODO: maybe try to close bestSolution and see how that fares, maybe good performance!
+            //val copy = Utility.deepClone(solution)
+            val copy = Utility.deepClone(bestSolution)
+            act(copy, Move(r1, r2, t1, t2))
+            
+            val copyCost = problem cost copy
+            if (copyCost < bestCost) {
+              bestSolution = copy
+              bestCost = copyCost
+            }
+          }
+        }
+      }
+    }
+    
+    Utility.copyValues(bestSolution, solution)
+    
+    solution
+  }
+  
+  override def toString = "Smart " + super.toString
 }
 
-object SwapTeams extends TTPHeuristic {
-	override def act(solution: MatrixInt) : MatrixInt = {
-		val rounds = solution.length
-		val teams = solution(0).length
-		
-		val (t1,t2) = getRands(teams)
-		
-		//printMatrix(solution)
-		println("SwapTeams :: swapping teams T%d and T%d" format (t1 + 1, t2 + 1))
-		
-		for (c <- 0 until rounds) {
-			if (math.abs(solution(c)(t1)) - 1 != t2) {
-				val s1 = toIndex(solution(c)(t1))
-				val s2 = toIndex(solution(c)(t2))
-				
-				val temp = solution(c)(t1)
-				solution(c)(t1) = solution(c)(t2)
-				solution(c)(t2) = temp
-				
-				solution(c)(s1) = toIntSign(solution(c)(s1)) * (t2 + 1)
-				solution(c)(s2) = toIntSign(solution(c)(s2)) * (t1 + 1)
-			}
-		}
-		
-		//printMatrix(solution)
-		
-		solution
-	}
-	
-	override def toString = "Swap Teams"
+class SwapRounds extends TTPHeuristic {
+  override def act(solution: MatrixInt): MatrixInt = {
+    val (r1, r2) = getRands(solution.length)
+    
+    act(solution, Move(r1 = r1, r2 = r2))
+  }
+  
+  @inline def act(solution: MatrixInt, move: Move) = {
+    val temp = solution(move.r1)
+    solution(move.r1) = solution(move.r2)
+    solution(move.r2) = temp
+
+    solution
+  }
+
+  override def toString = "Swap Rounds"
+}
+
+class ShiftRounds extends TTPHeuristic with TTPHeuristic2DRounds {
+  override def act(solution: MatrixInt): MatrixInt = {
+    val (r1, r2) = getRands(solution.length)
+    
+    act(solution, Move(r1 = r1, r2 = r2))
+  }
+  
+  @inline def act(solution: MatrixInt, move: Move) = {
+    var (min, max) = if (move.r1 < move.r2) (move.r1, move.r2) else (move.r2, move.r1)
+    
+    val temp = solution(min)
+
+    while (min != max) {
+      solution(min) = solution(min + 1)
+      
+      min += 1
+    }
+    
+    solution(max) = temp
+
+    solution
+  }
+
+  override def toString = "Shift Rounds"
+}
+
+class PartialSwapRounds extends TTPHeuristic {
+  private var partialPercentage = 0.0
+  private var runs = 0
+
+  override def act(solution: MatrixInt): MatrixInt = {
+    val teams = solution(0).length
+    val team = random.nextInt(teams)
+    val (r1, r2) = getRands(solution.length)
+    
+    act(solution, Move(r1 = r1, r2 = r2, t1 = team))
+  }
+  
+  @inline def act(solution: MatrixInt, move: Move) = {
+    val teams = solution(0).length
+    val (team, r1, r2) = (move.t1, move.r1, move.r2)
+
+    // find all teams that are affected by this swap in rounds r1, r2
+    // if this is ALL teams then this move becomes equivalent to a normal
+    // swap rounds
+    val seen = collection.mutable.Set(team, math.abs(solution(r1)(team)) - 1, math.abs(solution(r2)(team)) - 1)
+    var toSee = List(math.abs(solution(r1)(team)) - 1, math.abs(solution(r2)(team)) - 1)
+
+    while (toSee.nonEmpty) {
+      //D.infox("seen:\t%s\ntoSee:\t%s\n", seen, toSee)
+
+      val (t1, t2) = (math.abs(solution(r1)(toSee.head)) - 1, math.abs(solution(r2)(toSee.head)) - 1)
+
+      toSee = toSee.tail
+
+      if (!seen(t1)) {
+        seen += t1
+        toSee ::= t1
+      }
+
+      if (!seen(t2)) {
+        seen += t2
+        toSee ::= t2
+      }
+    }
+
+    // update statistics (for debugging mostly)
+    val success = if (seen.size == teams) 0 else 1
+    partialPercentage = (runs * partialPercentage + success) / (runs + 1)
+
+    runs += 1
+
+    //if (seen.size == solution(0).length) D.infox("AWWW ALL FOR NOTHING: rounds %d and %d, teams %s\n", r1, r2, seen)
+    //else D.infox("GOOD GOOD GOOD: rounds %d and %d [team %d]", r1, r2, team + 1)
+
+    if (seen.size != teams) {
+      for (sighted <- seen) {
+        val temp = solution(r1)(sighted)
+        solution(r1)(sighted) = solution(r2)(sighted)
+        solution(r2)(sighted) = temp
+      }
+    } 
+    else {
+      // use faster codepath for complete swap
+      val temp = solution(r1)
+      solution(r1) = solution(r2)
+      solution(r2) = temp
+    }
+
+    solution
+  }
+
+  override def toString = "Partial Swap Rounds (%.0f%%)" format (partialPercentage * 100)
+}
+
+class SwapHomes extends TTPHeuristic {
+  override def act(solution: MatrixInt): MatrixInt = {
+    val (t1, t2) = getRands(solution(0).length)
+    
+    act(solution, Move(t1 = t1, t2 = t2))
+  }
+
+  @inline
+  def act(solution: MatrixInt, move: Move) = {
+    val rounds = solution.length
+    val teams = solution(0).length
+
+    val (t1, t2) = (move.t1, move.t2)
+
+    for (c <- 0 until rounds) {
+      if (math.abs(solution(c)(t1)) - 1 == t2) {
+        solution(c)(t1) = -solution(c)(t1)
+        solution(c)(t2) = -solution(c)(t2)
+      }
+    }
+
+    solution
+  }
+
+  override def toString = "Swap Homes"
+}
+
+class SwapTeams extends TTPHeuristic {
+  override def act(solution: MatrixInt): MatrixInt = {
+    val (t1, t2) = getRands(solution(0).length)
+
+    act(solution, Move(t1 = t1, t2 = t2))
+  }
+
+  @inline
+  def act(solution: MatrixInt, move: Move) = {
+    val rounds = solution.length
+    val teams = solution(0).length
+
+    val (t1, t2) = (move.t1, move.t2)
+
+    //printMatrix(solution)
+    //println("SwapTeams :: swapping teams T%d and T%d" format (t1 + 1, t2 + 1))
+
+    for (c <- 0 until rounds) {
+      if (math.abs(solution(c)(t1)) - 1 != t2) {
+        val s1 = toIndex(solution(c)(t1))
+        val s2 = toIndex(solution(c)(t2))
+
+        val temp = solution(c)(t1)
+        solution(c)(t1) = solution(c)(t2)
+        solution(c)(t2) = temp
+
+        solution(c)(s1) = toIntSign(solution(c)(s1)) * (t2 + 1)
+        solution(c)(s2) = toIntSign(solution(c)(s2)) * (t1 + 1)
+      }
+    }
+
+    //printMatrix(solution)
+
+    solution
+  }
+
+  override def toString = "Swap Teams"
 }
 
 object NullHeuristic extends TTPHeuristic {
-	override def act(solution: MatrixInt) : MatrixInt = solution
+	override def act(solution: MatrixInt) = solution
+	@inline override def act(solution: MatrixInt, move: Move) = solution
 	override def toString = "Null Heuristic"
 }

@@ -7,7 +7,7 @@ import Utility._
 
 abstract class Problem[S]
 
-final class TTPProblem(val distances: MatrixDouble, val penalty: Double) extends Problem[MatrixInt] {
+final class TTPProblem(val distances: MatrixDouble, var penalty: Double) extends Problem[MatrixInt] {
 	val random = new Random
 	
 	val numberOfTeams = distances.length
