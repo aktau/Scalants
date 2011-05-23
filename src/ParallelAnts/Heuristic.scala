@@ -9,7 +9,7 @@ abstract class Heuristic[S] {
 	val cost: Double
 }
 
-abstract class TTPHeuristic extends Heuristic[MatrixInt] {
+abstract class TTPHeuristic(val problem: TTPProblem) extends Heuristic[MatrixInt] {
 	val random = new Random
 	
 	def act(solution: MatrixInt, move: Move) : MatrixInt
@@ -26,8 +26,6 @@ abstract class TTPHeuristic extends Heuristic[MatrixInt] {
 	}
 
   lazy val cost: Double = {
-    val (dist, optimalCost) = TTPProblem.getClassicProblem(6)
-    val problem = new TTPProblem(dist, optimalCost / 100)
     val testMatrix = problem.randomSolution
 
     val iterations = 1000
@@ -67,9 +65,11 @@ trait TTPHeuristic2DRounds1DTeam extends TTPHeuristicDimensioned {
 
 trait SmartTTPHeuristic extends TTPHeuristic {
   self: TTPHeuristicDimensioned =>
-  val problem: TTPProblem
   
   override def act(solution: MatrixInt): MatrixInt = {
+    val (o1, o2) = (solution.length, solution(0).length)
+    D.infox("%s entered with solution = (%d, %d)\n", this, solution.length, solution(0).length)
+    
     val range = hypermove(solution)
     
     var bestSolution = solution
@@ -85,15 +85,27 @@ trait SmartTTPHeuristic extends TTPHeuristic {
       //val copy = Utility.deepClone(solution)
       val copy = Utility.deepClone(bestSolution)
       act(copy, Move(r1, r2, t1, t2))
+      
+      if ((o1,o2) != (copy.length, copy(0).length)) {
+        D.infox("%s: dimensions changed at (%d,%d,%d,%d) = (%d, %d)\n", this, r1, r2, t1, t2, copy.length, copy(0).length)
+      }
 
       val copyCost = problem cost copy
       if (copyCost < bestCost) {
         bestSolution = copy
         bestCost = copyCost
       }
+      
+      if ((o1,o2) != (bestSolution.length, bestSolution(0).length)) {
+        D.infox("%s: dimensions changed at (%d,%d,%d,%d) = (%d, %d)\n", this, r1, r2, t1, t2, bestSolution.length, bestSolution(0).length)
+      }
     }
     
+    D.infox("%s: Before (%d,%d) = (%d, %d)\n", this, solution.length, solution(0).length, bestSolution.length, bestSolution(0).length)
     Utility.copyValues(bestSolution, solution)
+    D.infox("%s: After (%d,%d) = (%d, %d)\n", this, solution.length, solution(0).length, bestSolution.length, bestSolution(0).length)
+    
+    D.infox("%s left with solution = (%d, %d)\n", this, solution.length, solution(0).length)
     
     solution
   }
@@ -101,7 +113,7 @@ trait SmartTTPHeuristic extends TTPHeuristic {
   override def toString = "Smart " + super.toString
 }
 
-class SwapRounds extends TTPHeuristic {
+class SwapRounds(problem: TTPProblem) extends TTPHeuristic(problem) {
   override def act(solution: MatrixInt): MatrixInt = {
     val (r1, r2) = getRands(solution.length)
     
@@ -119,7 +131,7 @@ class SwapRounds extends TTPHeuristic {
   override def toString = "Swap Rounds"
 }
 
-class ShiftRounds extends TTPHeuristic with TTPHeuristic2DRounds {
+class ShiftRounds(problem: TTPProblem) extends TTPHeuristic(problem) {
   override def act(solution: MatrixInt): MatrixInt = {
     val (r1, r2) = getRands(solution.length)
     
@@ -145,7 +157,7 @@ class ShiftRounds extends TTPHeuristic with TTPHeuristic2DRounds {
   override def toString = "Shift Rounds"
 }
 
-class PartialSwapRounds extends TTPHeuristic {
+class PartialSwapRounds(problem: TTPProblem) extends TTPHeuristic(problem) {
   private var partialPercentage = 0.0
   private var runs = 0
 
@@ -214,7 +226,7 @@ class PartialSwapRounds extends TTPHeuristic {
   override def toString = "Partial Swap Rounds (%.0f%%)" format (partialPercentage * 100)
 }
 
-class SwapHomes extends TTPHeuristic {
+class SwapHomes(problem: TTPProblem) extends TTPHeuristic(problem) {
   override def act(solution: MatrixInt): MatrixInt = {
     val (t1, t2) = getRands(solution(0).length)
     
@@ -241,7 +253,7 @@ class SwapHomes extends TTPHeuristic {
   override def toString = "Swap Homes"
 }
 
-class SwapTeams extends TTPHeuristic {
+class SwapTeams(problem: TTPProblem) extends TTPHeuristic(problem) {
   override def act(solution: MatrixInt): MatrixInt = {
     val (t1, t2) = getRands(solution(0).length)
 
@@ -280,7 +292,7 @@ class SwapTeams extends TTPHeuristic {
   override def toString = "Swap Teams"
 }
 
-object NullHeuristic extends TTPHeuristic {
+class NullHeuristic(problem: TTPProblem) extends TTPHeuristic(problem) {
 	override def act(solution: MatrixInt) = solution
 	@inline override def act(solution: MatrixInt, move: Move) = solution
 	override def toString = "Null Heuristic"

@@ -72,7 +72,7 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
     val index = cumulativeWeights.indexWhere(_ > roulettePointer)
     
     if (index == -1)
-      D.info("[%s] cumulative weights: %s\n[%s] roulette pointer: %f\n",
+      D.infox("[%s] cumulative weights: %s\n[%s] roulette pointer: %f\n",
 	    this, cumulativeWeights mkString (", "),
 	    this, roulettePointer
 	  )
@@ -97,7 +97,9 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
     path.foldLeft(cost)(
       (lastcost, node) => {
         // make metaheuristic act
+        D.infox("%s applyPath: Before (%d,%d)\n", this, solution.length, solution(0).length)
         node.heuristic.act(solution)
+        D.infox("%s applyPath: After (%d,%d)\n", this, solution.length, solution(0).length)
         val heuristicCost = node.heuristic.cost
         cost = problem.cost(solution)
 
