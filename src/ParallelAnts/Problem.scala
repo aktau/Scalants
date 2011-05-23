@@ -69,10 +69,13 @@ final class TTPProblem(val distances: MatrixDouble, var penalty: Double) extends
 	def totalDistance(solution: MatrixInt) : Double = {
 		var distance = 0.0
 		
+		D.infox("Totaldistance called: numberOfTeams = %d, numberOfRounds = %d, solution = (%d, %d)\n", numberOfTeams, numberOfRounds, solution.length, solution(0).length)
+		
 		for (team <- 0 until numberOfTeams) {
 			var playedAtLast = team
 			var lastAway = false
 			
+			//D.infox("team = %d, round = X, numberOfTeams = %d, numberOfRounds = %d\n", team, numberOfTeams, numberOfRounds);
 			for (round <- 0 until numberOfRounds) {
 				val away = isAway(solution(round)(team))
 				val location = if (away) toIndex(solution(round)(team)) else team
@@ -369,7 +372,17 @@ object TTPProblem {
 			  Array[Double](929, 337,  380,    0, 1380,  408),  
 			  Array[Double](605, 1090, 1020, 1380,   0, 1010),  
 			  Array[Double](521,  315,  257,  408, 1010,   0)  
-		), 22969)
+			), 22969)
+		case 8 => (Array(
+		      Array[Double](0, 745,  665,  929,  605,  521,  370,  587),
+			  Array[Double](745,   0,   80,  337, 1090,  315,  567,  712),
+			  Array[Double](665,  80,    0,  380, 1020,  257,  501,  664),
+			  Array[Double](929, 337,  380,    0, 1380,  408,  622,  646),
+			  Array[Double](605, 1090, 1020, 1380,   0, 1010,  957, 1190),
+			  Array[Double](521,  315,  257,  408, 1010,   0,  253,  410),
+			  Array[Double](370,  567,  501,  622,  957,  253,   0,  250),
+			  Array[Double](587,  712,  664,  646, 1190,  410,  250,   0)
+			), 38760)
 		case _ => throw new Exception("Don't know that classic problem")
 	}
 }

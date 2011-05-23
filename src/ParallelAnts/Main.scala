@@ -22,8 +22,8 @@ object Main {
   def main(args : Array[String]) : Unit = {
   	val startTime = System.currentTimeMillis();
 
-    val numAnts = 6
-    val n = 6
+    val numAnts = 2
+    val n = 8
     
     val (dist, optimalCost) = TTPProblem.getClassicProblem(n)
     val problem = new TTPProblem(dist, optimalCost / 50)
@@ -34,16 +34,16 @@ object Main {
     val graph = new MinMaxAntGraph(1.0, 5.0)
     
     val p = problem
-    object SmartSwapHomes extends { val problem: TTPProblem = p } with SwapHomes with TTPHeuristic2DTeams with SmartTTPHeuristic
-    object SmartSwapRounds extends { val problem: TTPProblem = p } with SwapRounds with TTPHeuristic2DRounds with SmartTTPHeuristic
-    object SmartSwapTeams extends { val problem: TTPProblem = p } with SwapTeams with TTPHeuristic2DTeams with SmartTTPHeuristic
-    object SmartShiftRounds extends { val problem: TTPProblem = p } with ShiftRounds with TTPHeuristic2DRounds with SmartTTPHeuristic
+    object SmartSwapHomes extends SwapHomes(p) with TTPHeuristic2DTeams with SmartTTPHeuristic
+    object SmartSwapRounds extends SwapRounds(p) with TTPHeuristic2DRounds with SmartTTPHeuristic
+    object SmartSwapTeams extends SwapTeams(p) with TTPHeuristic2DTeams with SmartTTPHeuristic
+    object SmartShiftRounds extends ShiftRounds(p) with TTPHeuristic2DRounds with SmartTTPHeuristic
     
-    val swaphomes = graph.addNode(new SwapHomes, "Swap homes")
-    val swaprounds = graph.addNode(new SwapRounds, "Swap rounds")
-    val swapteams = graph.addNode(new SwapTeams, "Swap teams")
-    val partialswaprounds = graph.addNode(new PartialSwapRounds, "Partial swap rounds")
-    val shiftrounds = graph.addNode(new ShiftRounds, "Shift rounds")
+    val swaphomes = graph.addNode(new SwapHomes(p), "Swap homes")
+    val swaprounds = graph.addNode(new SwapRounds(p), "Swap rounds")
+    val swapteams = graph.addNode(new SwapTeams(p), "Swap teams")
+    val partialswaprounds = graph.addNode(new PartialSwapRounds(p), "Partial swap rounds")
+    val shiftrounds = graph.addNode(new ShiftRounds(p), "Shift rounds")
     val smartswaphomes = graph.addNode(SmartSwapHomes, "Smart Swap homes")
     val smartswaprounds = graph.addNode(SmartSwapRounds, "Smart Swap rounds")
     val smartswapteams = graph.addNode(SmartSwapTeams, "Smart Swap teams")
