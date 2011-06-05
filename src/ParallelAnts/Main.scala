@@ -22,7 +22,7 @@ object Main {
   def main(args : Array[String]) : Unit = {
   	val startTime = System.currentTimeMillis();
 
-    val numAnts = 2
+    val numAnts = 6
     val n = 8
     
     val (dist, optimalCost) = TTPProblem.getClassicProblem(n)
@@ -63,14 +63,14 @@ object Main {
 	)
 		
 	//val controller = new AntController(numAnts, problem, graph, 0.9, 0.8, 1.0, 10000) with LenientVisibility
-	val controller = new AntController(numAnts, problem, graph, 0.9, 0.8, 1000) with MinMaxVisibility { 
+	val controller = new AntController(numAnts, problem, graph, 0.9, 0.8, 5000) with MinMaxVisibility { 
       val lowerVisibilityBound = 1.0
       val upperVisibilityBound = 5.0
     }
     
     val run = time(
       controller.start,
-      (_: Any, t: Long) => printf("Spent %d ms solving the problem\n", t)
+      (_: Any, t: Long) => printf("Spent %d msec (%.3f sec) solving the problem\n", t, t.toDouble / 1000)
     )
   }
   

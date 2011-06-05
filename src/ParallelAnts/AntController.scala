@@ -48,11 +48,9 @@ class AntController(numberOfAnts: Int, problem: TTPProblem, val graph: AntGraph,
       D.info(graph)
       
       // make the journeys
-      D.infox("[%s 1] bestSolution = (%d,%d)\n", this, bestSolution.length, bestSolution(0).length)
       ants foreach (ant => {
         ant.makeJourney
       })
-      D.infox("[%s 2] bestSolution = (%d,%d)\n", this, bestSolution.length, bestSolution(0).length)
       
       // find the minimal cost after the journeys have been made
       val posteriorLowestCost = ants map (_.cost) min
@@ -80,10 +78,8 @@ class AntController(numberOfAnts: Int, problem: TTPProblem, val graph: AntGraph,
       //printMatrix(newBestSolution)
       D.info("")
       
-      D.infox("[%s 3] bestSolution = (%d,%d), newBestSolution = (%d,%d)\n", this, bestSolution.length, bestSolution(0).length, newBestSolution.length, newBestSolution(0).length)
       // this might be optional (we replace each ants solution by the current best)
       ants foreach (ant => ant.solution = newBestSolution)
-      D.infox("[%s 4] bestSolution = (%d,%d), newBestSolution = (%d,%d)\n", this, bestSolution.length, bestSolution(0).length, newBestSolution.length, newBestSolution(0).length)
 
       improveSolution(newBestSolution, problem cost newBestSolution, iterations - 1)
     } 

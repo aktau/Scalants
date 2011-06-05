@@ -69,8 +69,6 @@ final class TTPProblem(val distances: MatrixDouble, var penalty: Double) extends
 	def totalDistance(solution: MatrixInt) : Double = {
 		var distance = 0.0
 		
-		D.infox("Totaldistance called: numberOfTeams = %d, numberOfRounds = %d, solution = (%d, %d)\n", numberOfTeams, numberOfRounds, solution.length, solution(0).length)
-		
 		for (team <- 0 until numberOfTeams) {
 			var playedAtLast = team
 			var lastAway = false

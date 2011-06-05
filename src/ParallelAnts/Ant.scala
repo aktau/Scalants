@@ -97,9 +97,7 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
     path.foldLeft(cost)(
       (lastcost, node) => {
         // make metaheuristic act
-        D.infox("%s applyPath: Before (%d,%d)\n", this, solution.length, solution(0).length)
         node.heuristic.act(solution)
-        D.infox("%s applyPath: After (%d,%d)\n", this, solution.length, solution(0).length)
         val heuristicCost = node.heuristic.cost
         cost = problem.cost(solution)
 
