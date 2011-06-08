@@ -7,7 +7,7 @@ import Utility._
 
 abstract class Problem[S]
 
-final class TTPProblem(val distances: MatrixDouble, var penalty: Double) extends Problem[MatrixInt] {
+final class TTPProblem(val distances: MatrixDouble, val _penalty: Double) extends Problem[MatrixInt] {
 	val random = new Random
 	
 	val numberOfTeams = distances.length
@@ -21,6 +21,11 @@ final class TTPProblem(val distances: MatrixDouble, var penalty: Double) extends
 	def optimalCost = _optimalCost
 	def optimalCost_=(optimum: Double) = _optimalCost = optimum
 	def optimumKnown = if (optimalCost != 0.0) true else false
+	
+	def penalty = _penalty * _penaltyFactor
+	var _penaltyFactor = 1.0
+	def penaltyFactor = _penaltyFactor
+	def penaltyFactor_=(factor: Double) = _penaltyFactor = factor
 	
 	def numberOfViolations(solution: MatrixInt) : Int = {
 		var violations = 0
@@ -380,7 +385,19 @@ object TTPProblem {
 			  Array[Double](521,  315,  257,  408, 1010,   0,  253,  410),
 			  Array[Double](370,  567,  501,  622,  957,  253,   0,  250),
 			  Array[Double](587,  712,  664,  646, 1190,  410,  250,   0)
-			), 38760)
+			), 39479)
+		case 10 => (Array(
+		      Array[Double](0,  745,  665,  929,  605,  521,  370,  587,  467,  670),
+			  Array[Double](745,   0,   80,  337, 1090,  315,  567,  712,  871,  741),
+			  Array[Double](665,  80,    0,  380, 1020,  257,  501,  664,  808,  697),
+			  Array[Double](929, 337,  380,    0, 1380,  408,  622,  646,  878,  732),
+			  Array[Double](605, 1090, 1020, 1380,   0, 1010,  957, 1190, 1060, 1270),
+			  Array[Double](521,  315,  257,  408, 1010,   0,  253,  410,  557,  451),
+			  Array[Double](370,  567,  501,  622,  957,  253,   0,  250,  311,  325),
+			  Array[Double](587,  712,  664,  646, 1190,  410,  250,   0,  260,   86),
+			  Array[Double](467,  871,  808,  878, 1060,  557,  311,  260,   0,  328),
+			  Array[Double](670,  741,  697,  732, 1270,  451,  325,   86, 328,    0)
+		    ), 59436)
 		case _ => throw new Exception("Don't know that classic problem")
 	}
 }

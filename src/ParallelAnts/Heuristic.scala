@@ -36,12 +36,12 @@ abstract class TTPHeuristic(val problem: TTPProblem) extends Heuristic[MatrixInt
     }
     val end = System.currentTimeMillis
     
-    val elapsed = if (end - start == 0) 0.0 else (end - start).toDouble
+    val elapsed = if (end - start == 0) 1.0 else (end - start).toDouble
     
     printf("%scost of %s over %d iterations = %.3f sec (%.3f msec)\n", 
         if (end - start == 0) "[WAS NULL] " else "", toString, iterations, elapsed / 1000, elapsed)
 
-    (end - start).toDouble / 1000
+    elapsed / 1000
   }
 }
 
@@ -65,10 +65,20 @@ trait TTPHeuristic2DTeams extends TTPHeuristicDimensioned {
 trait TTPHeuristic2DRounds1DTeam extends TTPHeuristicDimensioned {
   override final def hypermove(solution: MatrixInt) = HyperMove(r1 = 0 until solution.length, r2 = 0 until solution.length, t1 = 0 until solution(0).length)
 }
+trait TTPHeuristic2DRoundsRandomTeam extends TTPHeuristicDimensioned {
+  override final def hypermove(solution: MatrixInt) = {
+    val tstart = Random.nextInt(solution(0).length - 2)
+    //val tend = tstart + 1 + Random.nextInt(solution(0).length - tstart)
+    val tend = tstart + 2
+    
+    HyperMove(r1 = 0 until solution.length, r2 = 0 until solution.length, t1 = tstart until tend)
+  }
+}
 
 trait SmartTTPHeuristic extends TTPHeuristic {
   self: TTPHeuristicDimensioned =>
   
+    /*
   override def act(solution: MatrixInt): MatrixInt = {    
     val range = hypermove(solution)
     
@@ -97,8 +107,92 @@ trait SmartTTPHeuristic extends TTPHeuristic {
     
     solution
   }
+  */
+    
+  override def act(solution: MatrixInt): MatrixInt = {    
+    val range = hypermove(solution)
+    
+    val originalSolution = Utility.deepClone(solution)
+    val bestSolution = Utility.deepClone(solution)
+    
+    var bestCost = problem.cost(solution)
+
+    for (
+      r1 <- range.r1;
+      r2 <- range.r2;
+      t1 <- range.t1;
+      t2 <- range.t2
+    ) {      
+      act(solution, Move(r1, r2, t1, t2))
+      
+      val copyCost = problem.cost(solution)
+      
+      if (copyCost < bestCost) {
+        Utility.copyValues(solution, bestSolution)
+        bestCost = copyCost
+      }
+      else {
+        // restore original solution only if it was worse
+    	//Utility.copyValues(originalSolution, solution)
+      }
+      
+      Utility.copyValues(originalSolution, solution)
+    }
+    
+    Utility.copyValues(bestSolution, solution)
+    
+    solution
+  }
   
   override def toString = "Smart " + super.toString
+}
+
+// keeps iterating until no more changes
+trait SuperSmartTTPHeuristic extends SmartTTPHeuristic {
+  self: TTPHeuristicDimensioned =>
+    
+  private var averageIterations = 0.0
+  private var runs = 0 
+  private var lastAveragingResults = scala.collection.immutable.Queue(0,0,0,0,0)
+  
+  private val movingAverageWidth = lastAveragingResults.length
+  
+  override def act(solution: MatrixInt): MatrixInt = {
+    var cost = problem.cost(solution)
+
+    var running = true
+    var iterations = 0
+    
+    while (running) {
+      super.act(solution)
+      
+      val newCost = problem.cost(solution)
+      
+      iterations += 1
+      
+      if (newCost == cost) {
+        // stop if the solution stayed the same
+        running = false
+      }
+      else if (newCost < cost) {
+        cost = newCost
+      }
+      else {
+        throw new Exception("This should NOT happen")
+      }
+    }
+    
+    val (pastIterations, clippedQueue) = lastAveragingResults.dequeue
+    lastAveragingResults = clippedQueue.enqueue(iterations)
+    
+    // update running average
+    averageIterations = averageIterations  + (iterations - pastIterations).toDouble / movingAverageWidth
+    runs += 1
+    
+    solution
+  }
+  
+  override def toString = ("Super (%.0f) " format (averageIterations)) + super.toString
 }
 
 class SwapRounds(problem: TTPProblem) extends TTPHeuristic(problem) {

@@ -37,3 +37,10 @@ object Utility {
     teams.map(team => rounds.map(round => solution(round)(team)))
   }
 }
+
+object Timef {
+  def apply[T, R](f: => T, res:(T, Long) => R) : R = {
+    val startTime = System.currentTimeMillis
+    res(f, System.currentTimeMillis - startTime)
+  }
+}

@@ -18,6 +18,13 @@ sealed abstract class Constraint(constraints: Constraints, maxRounds: Int, maxTe
 	
 	def apply(solution: MatrixIntVector, round: Int, team: Int, former: Seq[Int], current: Seq[Int]) : Unit
 	
+	/**
+	 * update solution, all elements in diff should be subtracted from all positions
+	 * 
+	 * @param solution
+	 * @param diff
+	 * @param positions
+	 */
 	final protected def update(solution: MatrixIntVector, diff: Seq[Int], positions: Seq[(Int, Int)]) : Unit = positions foreach { update(solution, diff, _) }
 	final protected def update(solution: MatrixIntVector, diff: Int, positions: Seq[(Int, Int)]) : Unit = update(solution, Seq(diff), positions)
 	final protected def update(solution: MatrixIntVector, diff: Int, position: (Int, Int)) : Unit = update(solution, Seq(diff), position)
@@ -40,23 +47,18 @@ sealed abstract class Constraint(constraints: Constraints, maxRounds: Int, maxTe
 
 final class TemporalConstraint(constraints: Constraints, maxRounds: Int, maxTeams: Int) extends Constraint(constraints, maxRounds, maxTeams) {
 	override def apply(solution: MatrixIntVector, round: Int, team: Int, former: Seq[Int], current: Seq[Int]) : Unit = {
-		//require(former != current)
-		
 		invert(current) foreach {
-			e => update(solution, invertedSign(e) * toTeam(team), (round, toIndex(e)))
+			element => update(solution, invertedSign(element) * toTeam(team), (round, toIndex(element)))
 		}
 	}
 }
 
 /**
- * This is a different version of the TemporalConstraint, should update less positions and thus be more efficient
+ * This is a different version of the TemporalConstraint, should update less positions and thus be more efficient time-wise but
+ * not propagation-wise
  */
 final class ReducedDomainSameRoundConstraint(constraints: Constraints, maxRounds: Int, maxTeams: Int) extends Constraint(constraints, maxRounds, maxTeams) {
 	override def apply(solution: MatrixIntVector, round: Int, team: Int, former: Seq[Int], current: Seq[Int]) : Unit = {
-		//require(former != current)
-		
-		if (former == current) println("WOROAORAOAORARO")
-		
 		(former diff current) foreach {
 			e => update(solution, invertedSign(e) * toTeam(team), (round, toIndex(e)))
 		}
@@ -66,10 +68,12 @@ final class ReducedDomainSameRoundConstraint(constraints: Constraints, maxRounds
 
 final class ConsecutiveConstraint(constraints: Constraints, maxRounds: Int, maxTeams: Int) extends Constraint(constraints, maxRounds, maxTeams) {
 	override def apply(solution: MatrixIntVector, round: Int, team: Int, former: Seq[Int], current: Seq[Int]) : Unit = {
-		//require(former != current)
-		
 		if (current.length == 1) {
 			val M = solution.length - 1 // note: has to be a capital letter (scala bug/feature)
+			
+			// make a list of all the positions that need to be updated
+			// which is one above and one below if we're in the middle of the rounds and
+			// one below or one above if we're at the edges
 			val positions = round match {
 				case 0 => Seq((round+1, team))
 				case M => Seq((round-1, team))
@@ -83,12 +87,12 @@ final class ConsecutiveConstraint(constraints: Constraints, maxRounds: Int, maxT
 
 final class OnePerGameSeriesConstraint(constraints: Constraints, maxRounds: Int, maxTeams: Int) extends Constraint(constraints, maxRounds, maxTeams) {
 	override def apply(solution: MatrixIntVector, round: Int, team: Int, former: Seq[Int], current: Seq[Int]) : Unit = {
-		//require(former != current)
-		
 		if (current.length == 1) {
-			val t = current(0)
+			val assigned = current(0)
 			
-			invertRows(Seq(round)) foreach { e => update(solution, t, (e, team)) }
+			// pick all rounds that are NOT the current round
+			// and remove from them the match we just assigned
+			invertRows(Seq(round)) foreach { otherRound => update(solution, assigned, (otherRound, team)) }
 		}
 	}
 }

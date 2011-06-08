@@ -6,7 +6,7 @@ import scala.util.Random
 
 import Utility._
 
-final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixInt, val journeyLength: Int, name: String) {
+final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixInt, _journeyLength: Int, name: String) {
   type Node = graph.Node
 
   type AntPath = Queue[Node]
@@ -16,14 +16,15 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
 
   val boost: Double = 5.0
   val lambda: Double = 1.003
-  //val lambda: Double = 1.002
 
   var currentNode: Node = graph.randomNode
+  var journeyLength = _journeyLength
 
   private var _cost = problem.cost(solution)
   private def cost_=(newcost: Double) = _cost = newcost
   def cost: Double = _cost
-
+  
+  // this is here to keep a cache of the cost (the calculation is quite expensive
   def solution_=(newsolution: MatrixInt) = {
     Utility.copyValues(newsolution, _solution)
 
@@ -35,6 +36,11 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
   override def toString = name
 
   def makeJourney: Unit = {
+    // randomize the journeyLength
+    journeyLength = 2 + Random.nextInt(_journeyLength - 2)
+    
+    D.infox("Journey length = %d\n", journeyLength)
+    
     val oldCost = cost
     val path = findPath(Path(currentNode))
 
@@ -71,11 +77,14 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
     
     val index = cumulativeWeights.indexWhere(_ > roulettePointer)
     
-    if (index == -1)
+    if (index == -1) {
       D.infox("[%s] cumulative weights: %s\n[%s] roulette pointer: %f\n",
 	    this, cumulativeWeights mkString (", "),
 	    this, roulettePointer
 	  )
+	  
+	  Plotter.plot
+    }
     
     node.neighbours(index)
   }
@@ -93,6 +102,9 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
 
   private def applyPath(solution: MatrixInt, path: AntPath): Node = {
     var counter: Double = 1.0
+    
+    val copy = deepClone(solution)
+    var bestcost = problem.cost(copy)
 
     path.foldLeft(cost)(
       (lastcost, node) => {
@@ -100,14 +112,25 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
         node.heuristic.act(solution)
         val heuristicCost = node.heuristic.cost
         cost = problem.cost(solution)
-
+        
+        if (bestcost > cost) {
+          Utility.copyValues(solution, copy)
+          
+          assert(problem.cost(copy) == cost)
+          
+          bestcost = cost
+        }
+        
+        /*
         if (!problem.isHardValid(solution)) {
           printMatrix(solution)
 
           throw new Exception("Solution not valid anymore")
         }
+        */
 
         // update visibility (heuristic) information
+        /*
         D.info("[%s]\t[cost %s from %.0f to %.0f] Visibility went from [%.2f] to [%.2f]\t%.6f^%.2f / %.2f = %.2f\n",
           node.heuristic,
           if (lastcost - cost > 0) "IMPROVED" else "WORSENED",
@@ -120,14 +143,43 @@ final class Ant(val problem: TTPProblem, val graph: AntGraph, _solution: MatrixI
           (heuristicCost * counter),
           math.pow(lambda, lastcost - cost) / (heuristicCost * counter)
         )
-
-        node.visibility += math.pow(lambda, lastcost - cost) / (heuristicCost * counter)
+        */
+        
+        
+        //node.visibility += math.pow(lambda, lastcost - cost) / (heuristicCost * counter)
+        if (lastcost > cost) {
+		  D.infox("[%s]\t[cost %s from %.0f to %.0f] Visibility went from [%.2f] to [%.2f]\t%.6f^%.2f / %.2f = %.2f\n",
+			  node.heuristic,
+			  if (lastcost - cost > 0) "IMPROVED" else "WORSENED",
+			  lastcost,
+			  cost,
+			  node.visibility,
+			  node.visibility + math.log(1 + (lastcost - cost)) / (heuristicCost * counter),
+			  lambda,
+			  lastcost - cost,
+			  (heuristicCost * counter),
+			  math.log(1 + (lastcost - cost)) / (heuristicCost * counter)
+		  )
+          
+          node.visibility += math.log(1 + (lastcost - cost)) / (heuristicCost * counter)
+        }
+        else {
+         D.infox("[%s]\t[cost %s from %.0f to %.0f]\n", 
+		  node.heuristic,
+		  if (lastcost - cost > 0) "IMPROVED" else "WORSENED",
+		  lastcost,
+		  cost
+         )
+        }
+          
 
         counter += 1
 
         cost
       }
     )
+    
+    Utility.copyValues(copy, solution)
 
     path.last
   }
